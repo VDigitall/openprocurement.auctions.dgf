@@ -38,13 +38,12 @@ class AuctionTest(BaseWebTest):
     def test_create_role(self):
         fields = set([
             'awardCriteriaDetails', 'awardCriteriaDetails_en', 'awardCriteriaDetails_ru',
-            'description', 'description_en', 'description_ru', 'dgfID', 'tenderAttempts',
+            'description', 'description_en', 'description_ru', 'dgfID',
             'features', 'guarantee', 'hasEnquiries', 'items', 'lots', 'minimalStep', 'mode',
             'procurementMethodRationale', 'procurementMethodRationale_en', 'procurementMethodRationale_ru',
             'procurementMethodType', 'procuringEntity',
             'submissionMethodDetails', 'submissionMethodDetails_en', 'submissionMethodDetails_ru',
             'title', 'title_en', 'title_ru', 'value', 'auctionPeriod',
-            'dgfDecisionDate', 'dgfDecisionID',
         ])
         if SANDBOX_MODE:
             fields.add('procurementMethodDetails')
@@ -52,7 +51,12 @@ class AuctionTest(BaseWebTest):
 
     def test_edit_role(self):
         fields = set([
-            'features', 'hasEnquiries',
+            'awardCriteriaDetails', 'awardCriteriaDetails_en', 'awardCriteriaDetails_ru',
+            'description', 'description_en', 'description_ru',
+            'features', 'hasEnquiries', 'items',
+            'procurementMethodRationale', 'procurementMethodRationale_en', 'procurementMethodRationale_ru',
+            'procuringEntity',
+            'submissionMethodDetails', 'submissionMethodDetails_en', 'submissionMethodDetails_ru',
         ])
         if SANDBOX_MODE:
             fields.add('procurementMethodDetails')
@@ -623,7 +627,6 @@ class AuctionResourceTest(BaseWebTest):
             u'procurementMethodType', u'id', u'date', u'dateModified', u'auctionID', u'status', u'enquiryPeriod',
             u'tenderPeriod', u'minimalStep', u'items', u'value', u'procuringEntity', u'next_check', u'dgfID',
             u'procurementMethod', u'awardCriteria', u'submissionMethod', u'title', u'owner', u'auctionPeriod',
-            u'dgfDecisionDate', u'dgfDecisionID', u'documents', u'tenderAttempts',
         ]))
         self.assertNotEqual(data['id'], auction['id'])
         self.assertNotEqual(data['doc_id'], auction['id'])
@@ -669,13 +672,13 @@ class AuctionResourceTest(BaseWebTest):
         auction = response.json['data']
         if self.initial_organization == test_financial_organization:
             self.assertEqual(set(auction) - set(self.initial_data), set([
-                u'id', u'dateModified', u'auctionID', u'date', u'status', u'procurementMethod', 'documents',
+                u'id', u'dateModified', u'auctionID', u'date', u'status', u'procurementMethod',
                 u'awardCriteria', u'submissionMethod', u'next_check', u'owner', u'enquiryPeriod', u'tenderPeriod',
-                u'eligibilityCriteria_en', u'eligibilityCriteria', u'eligibilityCriteria_ru',
+                u'eligibilityCriteria_en', u'eligibilityCriteria', u'eligibilityCriteria_ru'
             ]))
         else:
             self.assertEqual(set(auction) - set(self.initial_data), set([
-                u'id', u'dateModified', u'auctionID', u'date', u'status', u'procurementMethod', 'documents',
+                u'id', u'dateModified', u'auctionID', u'date', u'status', u'procurementMethod',
                 u'awardCriteria', u'submissionMethod', u'next_check', u'owner', u'enquiryPeriod', u'tenderPeriod',
             ]))
         self.assertIn(auction['id'], response.headers['Location'])
@@ -984,9 +987,9 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(response.content_type, 'application/json')
         new_auction = response.json['data']
         new_dateModified = new_auction.pop('dateModified')
-        #auction['procurementMethodRationale'] = 'Open'
+        auction['procurementMethodRationale'] = 'Open'
         self.assertEqual(auction, new_auction)
-        self.assertEqual(dateModified, new_dateModified)
+        self.assertNotEqual(dateModified, new_dateModified)
 
         response = self.app.patch_json('/auctions/{}'.format(
             auction['id']), {'data': {'dateModified': new_dateModified}})
@@ -999,39 +1002,39 @@ class AuctionResourceTest(BaseWebTest):
 
         revisions = self.db.get(auction['id']).get('revisions')
         self.assertEqual(revisions[-1][u'changes'][0]['op'], u'remove')
-        self.assertEqual(revisions[-1][u'changes'][0]['path'], u'/procurementMethod')
+        self.assertEqual(revisions[-1][u'changes'][0]['path'], u'/procurementMethodRationale')
 
         response = self.app.patch_json('/auctions/{}'.format(
             auction['id']), {'data': {'items': [self.initial_data['items'][0]]}})
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
 
-        #response = self.app.patch_json('/auctions/{}'.format(
-            #auction['id']), {'data': {'items': [{}, self.initial_data['items'][0]]}})
-        #self.assertEqual(response.status, '200 OK')
-        #self.assertEqual(response.content_type, 'application/json')
-        #item0 = response.json['data']['items'][0]
-        #item1 = response.json['data']['items'][1]
-        #self.assertNotEqual(item0.pop('id'), item1.pop('id'))
-        #self.assertEqual(item0, item1)
+        response = self.app.patch_json('/auctions/{}'.format(
+            auction['id']), {'data': {'items': [{}, self.initial_data['items'][0]]}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+        item0 = response.json['data']['items'][0]
+        item1 = response.json['data']['items'][1]
+        self.assertNotEqual(item0.pop('id'), item1.pop('id'))
+        self.assertEqual(item0, item1)
 
-        #response = self.app.patch_json('/auctions/{}'.format(
-            #auction['id']), {'data': {'items': [{}]}})
-        #self.assertEqual(response.status, '200 OK')
-        #self.assertEqual(response.content_type, 'application/json')
-        #self.assertEqual(len(response.json['data']['items']), 1)
+        response = self.app.patch_json('/auctions/{}'.format(
+            auction['id']), {'data': {'items': [{}]}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(len(response.json['data']['items']), 1)
 
-        #response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'items': [{"classification": {
-            #"scheme": u"CAV",
-            #"id": u"04000000-8",
-            #"description": u"Нерухоме майно"
-        #}}]}})
-        #self.assertEqual(response.status, '200 OK')
-        #self.assertEqual(response.content_type, 'application/json')
+        response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'items': [{"classification": {
+            "scheme": u"CPV",
+            "id": u"19212310-1",
+            "description": u"Нерухоме майно"
+        }}]}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
 
-        #response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'items': [{"additionalClassifications": [auction['items'][0]["classification"]]}]}})
-        #self.assertEqual(response.status, '200 OK')
-        #self.assertEqual(response.content_type, 'application/json')
+        response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'items': [{"additionalClassifications": [auction['items'][0]["classification"]]}]}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
 
         response = self.app.patch_json('/auctions/{}'.format(
             auction['id']), {'data': {'enquiryPeriod': {'endDate': new_dateModified2}}})
@@ -1090,7 +1093,7 @@ class AuctionResourceTest(BaseWebTest):
             auction['id']), {'data': {'procurementMethodRationale': 'Open'}})
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
-        self.assertEqual(response.json['data']['dateModified'], dateModified)
+        self.assertNotEqual(response.json['data']['dateModified'], dateModified)
         auction = response.json['data']
         dateModified = auction['dateModified']
 
@@ -1486,8 +1489,7 @@ class FinancialAuctionResourceTest(AuctionResourceTest):
             u'procurementMethodType', u'id', u'date', u'dateModified', u'auctionID', u'status', u'enquiryPeriod',
             u'tenderPeriod', u'minimalStep', u'items', u'value', u'procuringEntity', u'next_check', u'dgfID',
             u'procurementMethod', u'awardCriteria', u'submissionMethod', u'title', u'owner', u'auctionPeriod',
-            u'eligibilityCriteria', u'eligibilityCriteria_en', u'eligibilityCriteria_ru', 'documents',
-            u'dgfDecisionDate', u'dgfDecisionID', u'tenderAttempts',
+            u'eligibilityCriteria', u'eligibilityCriteria_en', u'eligibilityCriteria_ru'
         ]))
         self.assertNotEqual(data['id'], auction['id'])
         self.assertNotEqual(data['doc_id'], auction['id'])
